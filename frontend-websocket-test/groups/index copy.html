@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WebSocket Test Page</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      .container {
+        max-width: 600px;
+        margin: auto;
+        text-align: center;
+      }
+      #messages {
+        border: 1px solid #ccc;
+        padding: 10px;
+        margin-top: 10px;
+        height: 200px;
+        overflow-y: scroll;
+      }
+      .message {
+        margin: 5px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>WebSocket Test Page</h1>
+      <button id="connectBtn">Connect</button>
+      <div id="connectionStatus">Not Connected</div>
+      <input type="text" id="messageInput" placeholder="Type your message" />
+      <button id="sendBtn" disabled>Send Message</button>
+      <div id="messages"></div>
+    </div>
+
+    <script>
+      let socket;
+      const connectBtn = document.getElementById("connectBtn");
+      const sendBtn = document.getElementById("sendBtn");
+      const messageInput = document.getElementById("messageInput");
+      const messagesDiv = document.getElementById("messages");
+      const connectionStatus = document.getElementById("connectionStatus");
+
+      // Example auth token - replace with actual token
+      const authToken =
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNjY5YmI0MjJlNzgzOWFhNDU4MzFhMzA3IiwiZXhwIjoxNzIzMjkxNzkxLCJpYXQiOjE3MjIwODIxOTEsInRva2VuX3R5cGUiOiJhY2Nlc3MifQ.zpfBktBqmtFDb453HIdAv5_Hck7KJIBBCDVHMpLy8wo";
+
+      connectBtn.addEventListener("click", () => {
+        // Connect to the WebSocket endpoint with query parameter for authToken
+        const groupId = "669be0cf739814efc25ab70e"; // Replace with actual chat ID
+        const url = `ws://localhost:8000/api/group/continue-group-chat/${groupId}?authToken=${encodeURIComponent(
+          authToken
+        )}`;
+
+        socket = new WebSocket(url);
+
+        socket.onopen = () => {
+          connectionStatus.innerText = "Connected";
+          sendBtn.disabled = false;
+        };
+
+        socket.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            console.log("Received message:", data);
+
+            const message = document.createElement("div");
+            message.className = "message";
+            message.innerText = data.content || "No content"; // Display content or a fallback message
+            messagesDiv.appendChild(message);
+          } catch (error) {
+            console.error("Error parsing message:", error);
+          }
+        };
+
+        socket.onclose = () => {
+          connectionStatus.innerText = "Disconnected";
+          sendBtn.disabled = true;
+        };
+
+        socket.onerror = (error) => {
+          console.error("WebSocket error:", error);
+        };
+      });
+
+      sendBtn.addEventListener("click", () => {
+        const message = messageInput.value;
+        if (message && socket && socket.readyState === WebSocket.OPEN) {
+          // Send message with content and default reply_to_id as null
+          const messageData = JSON.stringify({
+            content: message,
+            reply_to_id: null,
+          });
+          socket.send(messageData);
+          messageInput.value = "";
+        } else if (!socket || socket.readyState !== WebSocket.OPEN) {
+          console.warn("WebSocket is not open. Cannot send message.");
+        }
+      });
+
+      messageInput.addEventListener("keypress", (event) => {
+        if (event.key === "Enter") {
+          sendBtn.click();
+        }
+      });
+    </script>
+  </body>
+</html>
